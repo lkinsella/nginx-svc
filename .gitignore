@@ -1,0 +1,8 @@
+*.suo
+*.user
+*.vshost.exe
+*.vshost.exe.manifest
+*.gpState
+/Bin
+/NGINX Service/bin
+/NGINX Service/obj

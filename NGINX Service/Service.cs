@@ -7,6 +7,7 @@ using System.Diagnostics;
 using System.IO;
 using System.ServiceProcess;
 using System.Text;
+using System.Threading;
 
 namespace Codeology.NGINX
 {
@@ -44,6 +45,24 @@ namespace Codeology.NGINX
                 return;
             }
 
+            // Get if we should gracefully quit (-s QUIT instead of -s STOP)
+            bool graceful;
+
+            try {
+                graceful = bool.Parse(ConfigurationManager.AppSettings["gracefulQuit"]);
+            } catch {
+                graceful = false;
+            }
+
+            // Get if we should kill the NGINX processes
+            bool force_stop;
+
+            try {
+                force_stop = bool.Parse(ConfigurationManager.AppSettings["forceStop"]);
+            } catch {
+                force_stop = false;
+            }
+
             // Combine NGINX path and filename
             string filename = Path.Combine(path,"nginx.exe");
 
@@ -52,7 +71,7 @@ namespace Codeology.NGINX
 
             process.StartInfo.FileName = filename;
             process.StartInfo.WorkingDirectory = path;
-            process.StartInfo.Arguments = "-s stop";
+            process.StartInfo.Arguments = (graceful ? "-s quit" : "-s stop");
             process.Start();
 
             try {
@@ -61,6 +80,23 @@ namespace Codeology.NGINX
             } finally {
                 // Close process
                 process.Close();
+            }
+
+            // If force stop, go and kill the processes
+            if (force_stop) {
+                // Sleep for a bit
+                Thread.Sleep(1000);
+
+                // Get a list of active processes
+                Process[] procs = Process.GetProcesses();
+
+                foreach(Process proc in procs) {
+                    try {
+                        if (Path.GetFileName(proc.MainModule.FileName) == "nginx.exe") proc.Kill();
+                    } catch {
+                        // Do nothing...
+                    }
+                }
             }
         }
 
